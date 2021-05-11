@@ -1,6 +1,7 @@
 from datetime import datetime
 import math
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import os
 import random
@@ -58,11 +59,11 @@ def calculate_output(weights, inputs, bias):
 
 def update_weights(weights, expected_output, calculated_output, alpha, inputs):
     for i in range(len(weights)):
-        weights[i] += alpha * (expected_output - calculated_output ) * inputs[i]
+        weights[i] += alpha * (expected_output - calculated_output) * inputs[i]
     return weights
 
 
-def train(training_dataset, weights, bias, alpha, epsilon):   
+def train(training_dataset, weights, bias, alpha, epsilon):
     cycles = 0
     quadratic_errors = []
     quadratic_error = 0
@@ -81,11 +82,14 @@ def train(training_dataset, weights, bias, alpha, epsilon):
         quadratic_errors.append(quadratic_error)
         if(math.sqrt((quadratic_error - last_quadratic_error)**2) <= epsilon):
             break
-    plt.plot(quadratic_errors, color = 'red')
+
+    plt.figure()
+    plt.plot(quadratic_errors, color='red')
     plt.title('Erro Quadratico X Ciclos')
     plt.xlabel('Ciclos')
     plt.ylabel('Erro Quadratico')
     plt.show()
+
     return [weights, bias, quadratic_error, cycles]
 
 
@@ -110,7 +114,25 @@ if __name__ == "__main__":
     [weights, bias, quadratic_error, cycles] = train(
         training_dataset, weights, bias, alpha, epsilon)
 
+    inputs = training_dataframe.iloc[:, :-1].values
+    outputs = training_dataframe.iloc[:, -1:].values
+
+    plt.figure()
+    plt.plot(inputs, outputs, 'bo')
+    plt.title('X vs Y')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.grid()
+
+    line_x_values = np.linspace(-1, 6, 100)
+    line_equation = weights[0] * line_x_values + bias
+    line_equation_representation = "y={}*x+{}".format(weights[0], bias)
+    plt.plot(line_x_values, line_equation, '-r',
+             label=line_equation_representation)
+    plt.show()
+
     write_to_log("\nNew Weights:\n {}".format(weights))
     write_to_log("\nNew Bias:\n {}".format(bias))
     write_to_log("\nQuadratic Error:\n {}".format(quadratic_error))
     write_to_log("\nCycles:\n {}".format(cycles))
+    write_to_log("\nLine equation:\n {}".format(line_equation_representation))
