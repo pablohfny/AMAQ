@@ -1,4 +1,5 @@
 from datetime import datetime
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -30,9 +31,8 @@ def write_to_log(value):
 
 def import_dataframe(file_path):
     try:
-        training_dataframe = pd.read_csv(file_path, delimiter=',',
-                                         header=0)
-        return training_dataframe
+        return pd.read_csv(file_path, delimiter=',',
+                           header=0, dtype="float64")
     except FileNotFoundError:
         errorMessage = 'Training File not found at: {}'.format(
             file_path)
@@ -45,29 +45,73 @@ def get_initial_weights(dataframe):
     num_columns = len(dataframe.columns[:-1])
 
     for i in range(num_columns):
-        weights.append(random.uniform(0.0, 0.5))
+        weights.append(round(random.uniform(0.0, 0.5), 4))
     return weights
 
 
-def train(dataset, initialized_weights):
-    # TODO - Implement Adaline Training algorithm
-    raise NotImplementedError
+def calculate_output(weights, inputs, bias):
+    y = 0
+    for i in range(len(inputs)):
+        y += weights[i] * inputs[i]
+    y += bias
+    return round(y, 7)
+
+
+def update_weights(weights, expected_output, calculated_output, alpha, inputs):
+    for i in range(len(weights)):
+        weights[i] += alpha * (expected_output - calculated_output ) * inputs[i]
+    return weights
+
+
+def train(training_dataset, weights, bias, alpha, epsilon):   
+    cycles = 0
+    quadratic_errors = []
+    quadratic_error = 0
+    while(True):
+        cycles += 1
+        last_quadratic_error = quadratic_error
+        quadratic_error = 0
+        for row in training_dataset:
+            inputs = row[:-1]
+            expected_output = row[-1]
+            calculated_output = calculate_output(weights, inputs, bias)
+            quadratic_error += (expected_output - calculated_output) ** 2
+            weights = update_weights(
+                weights, expected_output, calculated_output, alpha, inputs)
+            bias += alpha * (expected_output - calculated_output)
+        quadratic_errors.append(quadratic_error)
+        if(math.sqrt((quadratic_error - last_quadratic_error)**2) <= epsilon):
+            break
+    plt.plot(quadratic_errors, color = 'red')
+    plt.title('Erro Quadratico X Ciclos')
+    plt.xlabel('Ciclos')
+    plt.ylabel('Erro Quadratico')
+    plt.show()
+    return [weights, bias, quadratic_error, cycles]
 
 
 if __name__ == "__main__":
     write_to_log("-----------Started Script-----------")
 
     training_dataframe = import_dataframe(TRAINING_DATASET_CSV_FILE_PATH)
-    write_to_log("\nImported Training DataFrame:\n {}".format(training_dataframe))
+    write_to_log("\nImported Training DataFrame:\n {}".format(
+        training_dataframe))
 
+    training_dataset = training_dataframe.values
     weights = get_initial_weights(training_dataframe)
-    bias = random.uniform(0.0, 0.5)
-    initial_weights = weights.copy()
-    initial_bias = bias
+    bias = round(random.uniform(0.0, 0.5), 4)
+    alpha = 0.0025
+    epsilon = 1e-06
 
-    write_to_log("\nInitialized Weights:\n {}".format(initial_weights))
-    write_to_log("\nInitialized Bias:\n {}".format(initial_bias))
+    write_to_log("\nInitial Weights:\n {}".format(weights))
+    write_to_log("\nInitial Bias:\n {}".format(bias))
+    write_to_log("\nAlpha:\n {}".format(alpha))
+    write_to_log("\nepsilon:\n {}".format(epsilon))
 
-    # write_to_file()
+    [weights, bias, quadratic_error, cycles] = train(
+        training_dataset, weights, bias, alpha, epsilon)
 
-    # train(training_dataset)
+    write_to_log("\nNew Weights:\n {}".format(weights))
+    write_to_log("\nNew Bias:\n {}".format(bias))
+    write_to_log("\nQuadratic Error:\n {}".format(quadratic_error))
+    write_to_log("\nCycles:\n {}".format(cycles))
