@@ -1,3 +1,5 @@
+# Pablo Nunes 11411ECP001 11/05/2021 Adaline
+
 from datetime import datetime
 import math
 import matplotlib.pyplot as plt
@@ -117,6 +119,33 @@ if __name__ == "__main__":
     inputs = training_dataframe.iloc[:, :-1].values
     outputs = training_dataframe.iloc[:, -1:].values
 
+    sumxy = 0
+    sumx = 0
+    sumy = 0
+    sumxx = 0
+    sumyy = 0
+
+    for index, x in enumerate(inputs):
+        sumxy += inputs[index] * outputs[index]
+
+    for x in inputs:
+        sumx += x
+
+    for y in outputs:
+        sumy += y
+
+    for x in inputs:
+        sumxx += x**2
+
+    for y in outputs:
+        sumyy += y**2
+
+    write_to_log("\nSomatoria x*y:\n {}".format(sumxy))
+    write_to_log("\nSomatoria x:\n {}".format(sumx))
+    write_to_log("\nSomatoria y:\n {}".format(sumy))
+    write_to_log("\nSomatoria x^2:\n {}".format(sumxx))
+    write_to_log("\nSomatoria y^2:\n {}".format(sumyy))
+  
     plt.figure()
     plt.plot(inputs, outputs, 'bo')
     plt.title('X vs Y')
