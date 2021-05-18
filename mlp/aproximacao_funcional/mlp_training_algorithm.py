@@ -21,13 +21,20 @@ NUM_HIDDEN_NEURONS = 4
 NUM_OUTPUT_NEURONS = 1
 
 HIDDEN_WEIGHTS = [[round(random.uniform(-0.5, 0.5), 4)
-                   for i in range(NUM_HIDDEN_NEURONS)] for j in range(NUM_INPUT_NEURONS)]
+                   for i in range(NUM_HIDDEN_NEURONS)]
+                  for j in range(NUM_INPUT_NEURONS)]
 HIDDEN_BIAS = [round(random.uniform(-0.5, 0.5), 4)
                for i in range(NUM_HIDDEN_NEURONS)]
+HIDDEN_WEIGHTS_DELTA = [0 for i in range(NUM_HIDDEN_NEURONS)]
+HIDDEN_BIAS_DELTA = [0 for i in range(NUM_HIDDEN_NEURONS)]
+
 
 OUTPUT_WEIGHTS = [[round(random.uniform(-0.5, 0.5), 4)
-                   for j in range(NUM_OUTPUT_NEURONS)] for k in range(NUM_HIDDEN_NEURONS)]
+                   for j in range(NUM_OUTPUT_NEURONS)]
+                  for k in range(NUM_HIDDEN_NEURONS)]
 OUTPUT_BIAS = round(random.uniform(-0.5, 0.5), 4)
+OUTPUT_WEIGHTS_DELTA = [0
+                        for i in range(NUM_OUTPUT_NEURONS)]
 
 
 def write_to_log(value):
@@ -54,7 +61,9 @@ def import_dataframe(file_path):
         print(errorMessage)
         sys.exit()
 
-
+def train(training_dataset):
+    raise NotImplementedError
+    
 if __name__ == "__main__":
     try:
         write_to_log("-----------Started Script-----------")
