@@ -70,15 +70,15 @@ while (ciclo < numciclo) && (errototal > errototaladmissivel)
    // -----------fase feedforward -------------- 
    // inserção de cada padrao de treinamento na entrada da rede neural
    // e cálculo das saídas z dos neurônios escondidos
-   for padroes=1:4
-		for j=1:neuroniosescondidos
-         zin(j)= x(padroes,:)* v(:,j)+bv(j); 
-         z(j) = (2/(1+%e^(-zin(j))))-1; // sigmóide bipolar
-        end
+    for padroes=1:4
+		  for j=1:neuroniosescondidos
+        zin(j)= x(padroes,:)* v(:,j)+bv(j); 
+        z(j) = (2/(1+%e^(-zin(j))))-1; // sigmóide bipolar
+      end
       
        //%Cálculo da  saída  da rede    
      	yin=z'*w+bw;  
-        y=(2/(1+%e^(-yin)))-1;
+      y=(2/(1+%e^(-yin)))-1;
        
    // -------------fase da Retropropagação do erro----------      
    // da saida para a camada escondida

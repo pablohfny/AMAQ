@@ -1,5 +1,7 @@
 # Pablo Nunes 11411ECP001 17/05/2021 MLP
 from datetime import datetime
+import math
+import numpy as np
 import os
 import pandas as pd
 import random
@@ -17,7 +19,7 @@ ALPHA = 1e-3
 EPSILON = 1e-4
 MAX_CYCLES = 10000
 NUM_INPUT_NEURONS = 1
-NUM_HIDDEN_NEURONS = 4
+NUM_HIDDEN_NEURONS = 10
 NUM_OUTPUT_NEURONS = 1
 
 HIDDEN_WEIGHTS = [[round(random.uniform(-0.5, 0.5), 4)
@@ -25,16 +27,14 @@ HIDDEN_WEIGHTS = [[round(random.uniform(-0.5, 0.5), 4)
                   for j in range(NUM_INPUT_NEURONS)]
 HIDDEN_BIAS = [round(random.uniform(-0.5, 0.5), 4)
                for i in range(NUM_HIDDEN_NEURONS)]
-HIDDEN_WEIGHTS_DELTA = [0 for i in range(NUM_HIDDEN_NEURONS)]
-HIDDEN_BIAS_DELTA = [0 for i in range(NUM_HIDDEN_NEURONS)]
-
+HIDDEN_WEIGHTS_DELTA = [[0 for i in range(NUM_INPUT_NEURONS)
+                        for j in range(NUM_HIDDEN_NEURONS)]]
 
 OUTPUT_WEIGHTS = [[round(random.uniform(-0.5, 0.5), 4)
                    for j in range(NUM_OUTPUT_NEURONS)]
                   for k in range(NUM_HIDDEN_NEURONS)]
-OUTPUT_BIAS = round(random.uniform(-0.5, 0.5), 4)
 OUTPUT_WEIGHTS_DELTA = [0
-                        for i in range(NUM_OUTPUT_NEURONS)]
+                        for i in range(NUM_HIDDEN_NEURONS)]
 
 
 def write_to_log(value):
@@ -61,23 +61,144 @@ def import_dataframe(file_path):
         print(errorMessage)
         sys.exit()
 
+
+def activate_function(value):
+    return (2/(1 + math.exp(-value)))-1
+
+
+def derivative_activate_function(value):
+    return 0.5 * (1 + value) * (1 - value)
+
+
+def calculate_hidden_inputs(inputs):
+    weight_by_input = 0
+    for weights in HIDDEN_WEIGHTS:
+        weight_by_input = [(sum(inputs * weights[i]))
+                           for i in range(len(weights))]
+    return [HIDDEN_BIAS[i] + weight_by_input[i] for i in range(len(weight_by_input))]
+
+
+def calculate_hidden_outputs(hidden_inputs):
+    return [activate_function(hidden_inputs[i])
+            for i in range(len(hidden_inputs))]
+
+
+def calculate_output_layer_input(hidden_outputs, output_bias):
+    return sum(sum(np.transpose(hidden_outputs) * OUTPUT_WEIGHTS)) + output_bias
+
+
+def calculate_output_derivative_delta(expected_output, calculated_output):
+    return (expected_output - calculated_output) \
+        * derivative_activate_function(calculated_output)
+
+
+def calculate_output_weight_deltas(output_derivative_delta, hidden_outputs):
+    return [(ALPHA * output_derivative_delta * hidden_outputs[i]) for i in range(len(hidden_outputs))]
+
+
+def calculate_output_bias_delta(output_derivative_delta):
+    return ALPHA * output_derivative_delta
+
+
+def calculate_hidden_derivative_weight_deltas(output_derivative_delta, hidden_outputs):
+    return [sum(output_derivative_delta * weight for weight in OUTPUT_WEIGHTS[i]) * derivative_activate_function(hidden_outputs[i]) for i in range(len(hidden_outputs))]
+
+
+def calculate_hidden_weight_deltas(hidden_derivative_weight_deltas, inputs):
+    return [[(ALPHA * np.transpose(hidden_derivative_weight_deltas[j]) * inputs[i])
+             for i in range(len(inputs))
+            for j in range(len(hidden_derivative_weight_deltas))]]
+
+
+def calculate_hidden_bias_delta(hidden_derivative_weight_deltas):
+    return [ALPHA * delta for delta in hidden_derivative_weight_deltas]
+
+
+def update_output_weights(output_weight_deltas):
+    for i in range(len(OUTPUT_WEIGHTS)):
+        OUTPUT_WEIGHTS[i] += output_weight_deltas[i]
+
+
+def update_output_bias(output_bias, output_bias_delta):
+    return output_bias + output_bias_delta
+
+
+def update_hidden_weights(hidden_weight_deltas):
+    for i in range(NUM_INPUT_NEURONS):
+        for j in range(NUM_HIDDEN_NEURONS):
+            HIDDEN_WEIGHTS[i][j] += hidden_weight_deltas[i][j]
+
+
+def update_hidden_bias(hidden_bias_deltas):
+    for i in range(len(HIDDEN_BIAS)):
+        HIDDEN_BIAS[i] += hidden_bias_deltas[i]
+
+
 def train(training_dataset):
-    raise NotImplementedError
-    
+    output_bias = round(random.uniform(-0.5, 0.5), 4)
+    cycles = 0
+    total_error = EPSILON
+    total_error_array = []
+    while cycles < MAX_CYCLES and total_error >= EPSILON:
+        total_error = 0
+        cycles += 1
+        for row in training_dataset:
+            inputs = row[:-1]
+            expected_output = row[-1]
+
+            hidden_inputs = calculate_hidden_inputs(inputs)
+            hidden_outputs = calculate_hidden_outputs(hidden_inputs)
+
+            output_layer_input = calculate_output_layer_input(
+                hidden_outputs, output_bias)
+            calculcated_output = activate_function(output_layer_input)
+
+            output_derivative_delta = calculate_output_derivative_delta(
+                expected_output, calculcated_output)
+            output_weight_deltas = calculate_output_weight_deltas(
+                output_derivative_delta, hidden_outputs)
+            output_bias_delta = calculate_output_bias_delta(
+                output_derivative_delta)
+
+            hidden_derivative_weight_deltas = calculate_hidden_derivative_weight_deltas(
+                output_derivative_delta, hidden_outputs)
+            hidden_weight_deltas = calculate_hidden_weight_deltas(
+                hidden_derivative_weight_deltas, inputs)
+            hidden_bias_delta = calculate_hidden_bias_delta(
+                hidden_derivative_weight_deltas)
+
+            update_output_weights(output_weight_deltas)
+            output_bias = update_output_bias(output_bias, output_bias_delta)
+
+            update_hidden_weights(hidden_weight_deltas)
+            update_hidden_bias(hidden_bias_delta)
+
+            total_error += 0.5 * pow((expected_output - calculcated_output), 2)
+            total_error_array.append(total_error)
+    return [total_error_array, cycles, output_bias]
+
+
 if __name__ == "__main__":
-    try:
-        write_to_log("-----------Started Script-----------")
-        training_dataframe = import_dataframe(TRAINING_DATASET_CSV_FILE_PATH)
+    write_to_log("-----------Started Script-----------")
+    training_dataframe = import_dataframe(TRAINING_DATASET_CSV_FILE_PATH)
+    write_to_log("\nImported Training DataFrame:\n {}".format(
+        training_dataframe))
+    write_to_log("\nAlpha:\n {}".format(ALPHA))
+    write_to_log("\nEpsilon:\n {}".format(EPSILON))
 
-        write_to_log("\nImported Training DataFrame:\n {}".format(
-            training_dataframe))
-        write_to_log("\nAlpha:\n {}".format(ALPHA))
-        write_to_log("\nEpsilon:\n {}".format(EPSILON))
+    write_to_log("\nInitial Hidden Weights:\n {}".format(HIDDEN_WEIGHTS))
+    write_to_log("\nInitial Hidden Bias:\n {}".format(HIDDEN_BIAS))
 
-        write_to_log("\nInitial Hidden Weights:\n {}".format(HIDDEN_WEIGHTS))
-        write_to_log("\nInitial Hidden Bias:\n {}".format(HIDDEN_BIAS))
+    write_to_log("\nInitial Output Weights:\n {}".format(OUTPUT_WEIGHTS))
 
-        write_to_log("\nInitial Output Weights:\n {}".format(OUTPUT_WEIGHTS))
-        write_to_log("\nInitial Output Bias:\n {}".format(OUTPUT_BIAS))
-    except:
-        print("Error occured")
+    training_dataset = training_dataframe.values
+    [total_error_array, cycles, output_bias] = train(training_dataset)
+
+    write_to_log("\nFinal Hidden Weights:\n {}".format(HIDDEN_WEIGHTS))
+    write_to_log("\nFinal Hidden Bias:\n {}".format(HIDDEN_BIAS))
+
+    write_to_log("\nFinal Output Weights:\n {}".format(OUTPUT_WEIGHTS))
+    write_to_log("\nFinal Output Bias:\n {}".format(output_bias))
+
+    write_to_log("\nTotal Quadratic Errors:\n {}".format(total_error_array))
+    write_to_log("\nCycles:\n {}".format(cycles))
