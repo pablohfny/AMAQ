@@ -1,6 +1,7 @@
 # Pablo Nunes 11411ECP001 17/05/2021 MLP
 from datetime import datetime
 import math
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
@@ -10,16 +11,16 @@ import sys
 EXECUTION_DATETIME = datetime.now()
 FORMATTED_EXECUTION_DATETIME = "{}T{}".format(
     EXECUTION_DATETIME.strftime("%x").replace("/", "-"),
-    EXECUTION_DATETIME.strftime("%X"))
+    EXECUTION_DATETIME.strftime("%X").replace(":", "_"))
 CURRENT_DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-TRAINING_DATASET_CSV_FILE_PATH = CURRENT_DIR_PATH + "/data/training_dataset.csv"
-LOGS_PATH = CURRENT_DIR_PATH + "/logs"
+TRAINING_DATASET_CSV_FILE_PATH = CURRENT_DIR_PATH + "\\data\\training_dataset.csv"
+LOGS_PATH = CURRENT_DIR_PATH + "\\logs"
 
-ALPHA = 1e-3
-EPSILON = 1e-4
+ALPHA = 3e-2
+EPSILON = 1e-3
 MAX_CYCLES = 10000
-NUM_INPUT_NEURONS = 1
-NUM_HIDDEN_NEURONS = 10
+NUM_INPUT_NEURONS = 2
+NUM_HIDDEN_NEURONS = 4
 NUM_OUTPUT_NEURONS = 1
 
 HIDDEN_WEIGHTS = [[round(random.uniform(-0.5, 0.5), 4)
@@ -27,21 +28,19 @@ HIDDEN_WEIGHTS = [[round(random.uniform(-0.5, 0.5), 4)
                   for j in range(NUM_INPUT_NEURONS)]
 HIDDEN_BIAS = [round(random.uniform(-0.5, 0.5), 4)
                for i in range(NUM_HIDDEN_NEURONS)]
-HIDDEN_WEIGHTS_DELTA = [[0 for i in range(NUM_INPUT_NEURONS)
-                        for j in range(NUM_HIDDEN_NEURONS)]]
+HIDDEN_WEIGHTS_DERIVATIVE_DELTA = [0 for j in range(NUM_HIDDEN_NEURONS)]
 
 OUTPUT_WEIGHTS = [[round(random.uniform(-0.5, 0.5), 4)
-                   for j in range(NUM_OUTPUT_NEURONS)]
-                  for k in range(NUM_HIDDEN_NEURONS)]
-OUTPUT_WEIGHTS_DELTA = [0
-                        for i in range(NUM_HIDDEN_NEURONS)]
+                   for i in range(NUM_OUTPUT_NEURONS)]
+                  for j in range(NUM_HIDDEN_NEURONS)]
+OUTPUT_WEIGHTS_DELTA = [0 for i in range(NUM_HIDDEN_NEURONS)]
 
 
 def write_to_log(value):
     if not os.path.exists(LOGS_PATH):
         os.makedirs(LOGS_PATH)
 
-    log_file_path = "{}/{}.log".format(
+    log_file_path = "{}\\{}.log".format(
         LOGS_PATH, FORMATTED_EXECUTION_DATETIME)
 
     file = open(log_file_path, "a")
@@ -71,16 +70,11 @@ def derivative_activate_function(value):
 
 
 def calculate_hidden_inputs(inputs):
-    weight_by_input = 0
-    for weights in HIDDEN_WEIGHTS:
-        weight_by_input = [(sum(inputs * weights[i]))
-                           for i in range(len(weights))]
-    return [HIDDEN_BIAS[i] + weight_by_input[i] for i in range(len(weight_by_input))]
+    return [[inputs[i] * weight for weight in HIDDEN_WEIGHTS[i]] for i in range(NUM_INPUT_NEURONS)]
 
 
 def calculate_hidden_outputs(hidden_inputs):
-    return [activate_function(hidden_inputs[i])
-            for i in range(len(hidden_inputs))]
+    return [activate_function(sum(hidden_inputs[i][j] for i in range(NUM_INPUT_NEURONS)) + HIDDEN_BIAS[j]) for j in range(NUM_HIDDEN_NEURONS)]
 
 
 def calculate_output_layer_input(hidden_outputs, output_bias):
@@ -105,9 +99,8 @@ def calculate_hidden_derivative_weight_deltas(output_derivative_delta, hidden_ou
 
 
 def calculate_hidden_weight_deltas(hidden_derivative_weight_deltas, inputs):
-    return [[(ALPHA * np.transpose(hidden_derivative_weight_deltas[j]) * inputs[i])
-             for i in range(len(inputs))
-            for j in range(len(hidden_derivative_weight_deltas))]]
+    return [[(ALPHA * np.transpose(hidden_derivative_weight_deltas[j]) * inputs[i]) for j in range(NUM_HIDDEN_NEURONS)]
+            for i in range(NUM_INPUT_NEURONS)]
 
 
 def calculate_hidden_bias_delta(hidden_derivative_weight_deltas):
@@ -174,12 +167,33 @@ def train(training_dataset):
             update_hidden_bias(hidden_bias_delta)
 
             total_error += 0.5 * pow((expected_output - calculcated_output), 2)
-            total_error_array.append(total_error)
+        total_error_array.append(total_error)
+    plt.figure()
+    plt.plot(total_error_array, color='red')
+    plt.title('Erro Quadratico X Ciclos')
+    plt.xlabel('Ciclos')
+    plt.ylabel('Erro Quadratico')
+    plt.show()
     return [total_error_array, cycles, output_bias]
 
 
+def test(testing_dataframe, output_bias):
+    write_to_log("\nTest DataFrame:\n {}".format(
+        testing_dataframe))
+    write_to_log("-----------Started Test-----------")
+    for row in testing_dataframe.values:
+        inputs = row[:-1]
+        write_to_log("\nInputs:\n {}".format(inputs))
+        hidden_inputs = calculate_hidden_inputs(inputs)
+        hidden_outputs = calculate_hidden_outputs(hidden_inputs)
+        output_layer_input = calculate_output_layer_input(
+            hidden_outputs, output_bias)
+        calculcated_output = activate_function(output_layer_input)
+        write_to_log("\nCalculated Output:\n {}".format(calculcated_output))
+
+
 if __name__ == "__main__":
-    write_to_log("-----------Started Script-----------")
+    write_to_log("\n-----------Started Training Script-----------\n")
     training_dataframe = import_dataframe(TRAINING_DATASET_CSV_FILE_PATH)
     write_to_log("\nImported Training DataFrame:\n {}".format(
         training_dataframe))
@@ -194,6 +208,16 @@ if __name__ == "__main__":
     training_dataset = training_dataframe.values
     [total_error_array, cycles, output_bias] = train(training_dataset)
 
+    inputs = training_dataset.iloc[:,:-1].values
+    outputs = training_dataset.iloc[:,-1:].values
+
+    plt.figure()
+    plt.plot(inputs, outputs, 'bo')
+    plt.title('X vs Y')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.grid()
+
     write_to_log("\nFinal Hidden Weights:\n {}".format(HIDDEN_WEIGHTS))
     write_to_log("\nFinal Hidden Bias:\n {}".format(HIDDEN_BIAS))
 
@@ -202,3 +226,5 @@ if __name__ == "__main__":
 
     write_to_log("\nTotal Quadratic Errors:\n {}".format(total_error_array))
     write_to_log("\nCycles:\n {}".format(cycles))
+    write_to_log("\n-----------Ended Training Script-----------\n")
+    test(training_dataframe, output_bias)

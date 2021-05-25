@@ -42,7 +42,6 @@ numciclo=4000;
 v=rand(neuroniosentrada,neuroniosescondidos)-0.5;
 bv=rand(neuroniosescondidos,1)-0.5; //bias
 
-deltinhainv=zeros(neuroniosescondidos,1);
 deltinhav=zeros(neuroniosescondidos,1);
 
 // da camada de saida
@@ -72,7 +71,7 @@ while (ciclo < numciclo) && (errototal > errototaladmissivel)
    // e cálculo das saídas z dos neurônios escondidos
     for padroes=1:4
 		  for j=1:neuroniosescondidos
-        zin(j)= x(padroes,:)* v(:,j)+bv(j); 
+        zin(j)= x(padroes,:) * v(:,j)+bv(j); 
         z(j) = (2/(1+%e^(-zin(j))))-1; // sigmóide bipolar
       end
       
